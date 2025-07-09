@@ -5,30 +5,31 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
+
 	"golang.org/x/net/html"
 )
 
 var wg sync.WaitGroup
 var mu sync.Mutex
 
-// to check if a link is active or dead by verifying its status code
 func checkLink(link string) {
 	resp, err := http.Get(link)
-	if (err != nil) {
+	if err != nil {
 		fmt.Printf("Error: %s -> %v\n", link, err)
-		return 
+		return
 	}
 	defer resp.Body.Close()
 
-	if (resp.StatusCode >= 400) {
+	if resp.StatusCode >= 400 {
+
 		fmt.Printf("DEAD LINK: %s -> %d\n", link, resp.StatusCode)
 	} else {
 		fmt.Printf("Ok LINK: %s -> %d\n", link, resp.StatusCode)
 	}
 }
-
 
 func extractLinks(link string) ([]string, error) {
 	resp, err := http.Get(link)
@@ -40,27 +41,25 @@ func extractLinks(link string) ([]string, error) {
 	return parseLinks(resp.Body)
 }
 
-// extract all links that are avaliable in the html page
 func parseLinks(body io.Reader) ([]string, error) {
 	var links []string
 	doc, err := html.Parse(body)
 	if err != nil {
 		return nil, err
 	}
-	var visit func(*html.Node)  // fun to iterate through the html code to identify the anchor tag
+	var visit func(*html.Node) 
 	visit = func(n *html.Node) {
 		if n.Type == html.ElementNode && n.Data == "a" {
 			for _, attr := range n.Attr {
 				if attr.Key == "href" {
 					href := strings.TrimSpace(attr.Val)
-					if (href != "" && !strings.HasPrefix(href, "#") && !strings.HasPrefix(href, "mailto:")) { // skip the anchor tag which does not have redorect link
-						links = append(links,href)
+					if href != "" && !strings.HasPrefix(href, "#") && !strings.HasPrefix(href, "mailto:") { // skip the anchor tag which does not have redirect link
+						links = append(links, href)
 					}
 				}
 			}
 		}
-		// check all children tags of each tag
-		for c := n.FirstChild; c!= nil; c=c.NextSibling {
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			visit(c)
 		}
 	}
@@ -69,10 +68,10 @@ func parseLinks(body io.Reader) ([]string, error) {
 }
 
 func classifyLinks(baseURL string, rawLinks []string) ([]string, []string) {
-	var internal, external []string  // to store url of same domain and diff domain
-	seen := make(map[string]bool) // keep track of visited urls
+	var internal, external []string 
+	seen := make(map[string]bool)   
 
-	base, err := url.Parse(baseURL) // parses a raw url into a [URL] structure or Object
+	base, err := url.Parse(baseURL) 
 	if err != nil {
 		return nil, nil
 	}
@@ -101,12 +100,10 @@ func classifyLinks(baseURL string, rawLinks []string) ([]string, []string) {
 	return internal, external
 }
 
-// recursive web crawler
 func crawl(link string, visited map[string]bool) {
-	defer wg.Done() // defer - executed when the function is completed
-	// once the function is finished, the crawl is marked as completed
+	defer wg.Done()
 
-	mu.Lock() // mutex lock
+	mu.Lock() 
 	if visited[link] {
 		mu.Unlock()
 		return
@@ -115,7 +112,7 @@ func crawl(link string, visited map[string]bool) {
 	visited[link] = true
 	mu.Unlock()
 
-	checkLink(link) // to check wheather the link is dead or not
+	checkLink(link) 
 
 	links, err := extractLinks(link)
 	if err != nil {
@@ -126,22 +123,22 @@ func crawl(link string, visited map[string]bool) {
 	internal, external := classifyLinks(link, links)
 
 	for _, ex := range external {
-		checkLink(ex) // just check, not crawling for external links
+		checkLink(ex) 
 	}
 
 	for _, in := range internal {
-		// for each internal link
-		wg.Add(1) // increase wait group count
-		go crawl(in, visited) // recursively crawl each link
+		
+		wg.Add(1)            
+		go crawl(in, visited) 
 	}
 }
 
 func main() {
-	startURL := "https://scrape-me.dreamsofcode.io" // input url
+	startURL := os.Args[1] // test link = https://scrape-me.dreamsofcode.io
 	visited := make(map[string]bool)
 
 	wg.Add(1)
 	go crawl(startURL, visited)
 
-	wg.Wait() // blocks main fun from exiting until all goroutines have called wg.Done()
+	wg.Wait() 
 }
