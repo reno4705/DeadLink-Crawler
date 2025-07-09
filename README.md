@@ -1,6 +1,6 @@
 # DeadLink-Crawler 🕷️
 
-**DeadLink-Crawler** is a fast, concurrent CLI tool built in Go to **recursively crawl a website** and **detect broken (dead) links** — specifically links that return HTTP status codes in the `4xx` or `5xx` range.
+**DeadLink-Crawler** is a fast, concurrent CMD tool built in Go to **recursively crawl a website** and **detect broken (dead) links** — specifically links that return HTTP status codes in the `4xx` or `5xx` range.
 
 ---
 
@@ -46,12 +46,8 @@ go get golang.org/x/net/html
 Simply run:
 
 ```bash
-go run main.go
+go run main.go https://scrape-me.dreamsofcode.io 
 ```
-
-> The tool will crawl the default URL hardcoded in `main.go`, which is:
->
-> `https://scrape-me.dreamsofcode.io`
 
 You will see a list of links printed as either:
 - `Ok LINK: <url> -> <status code>`
